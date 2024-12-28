@@ -1,103 +1,109 @@
-'use client';
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable no-console */
 
-import React, { useEffect, useState } from 'react';
-import { Web3Auth } from "@web3auth/modal";
-import { CHAIN_NAMESPACES } from "@web3auth/base";
-import { ethers, JsonRpcSigner } from "ethers";
+"use client";
 
-const Login = () => {
-  const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
-  const [provider, setProvider] = useState<any>(null);
-  const [address, setAddress] = useState<string>("");
+import { CHAIN_NAMESPACES, IAdapter, IProvider, WEB3AUTH_NETWORK } from "@web3auth/base";
+import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+import { getDefaultExternalAdapters } from "@web3auth/default-evm-adapter";
+import { Web3Auth, Web3AuthOptions } from "@web3auth/modal";
+import { useEffect, useState } from "react";
 
+import RPC from "./ethersRPC";
+import { useRouter } from "next/navigation";
+// import RPC from "./viemRPC";
+// import RPC from "./web3RPC";
+
+const clientId = "BPi5PB_UiIZ-cPz1GtV5i1I2iOSOHuimiXBI0e-Oe_u6X3oVAbCiAZOTEBtTXw4tsluTITPqA8zMsfxIKMjiqNQ"; // get from https://dashboard.web3auth.io
+
+const chainConfig = {
+  chainNamespace: CHAIN_NAMESPACES.EIP155,
+  chainId: "0xaa36a7",
+  rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+  // Avoid using public rpcTarget in production.
+  // Use services like Infura, Quicknode etc
+  displayName: "Ethereum Sepolia Testnet",
+  blockExplorerUrl: "https://sepolia.etherscan.io",
+  ticker: "ETH",
+  tickerName: "Ethereum",
+  logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+};
+
+const privateKeyProvider = new EthereumPrivateKeyProvider({
+  config: { chainConfig },
+});
+
+const web3AuthOptions: Web3AuthOptions = {
+  clientId,
+  web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+  privateKeyProvider,
+}
+const web3auth = new Web3Auth(web3AuthOptions);
+
+function Login() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
     const init = async () => {
       try {
-        const web3auth = new Web3Auth({
-          clientId: "BBHOVbA7NXfTvBDD_AGBESowQ7Eu9dR_2ZnXX71ktS6k6iJf6xi-DXdW0cP5Y-6OSiEldR8x2ZhlV_DIDvA2LGU", // Get this from Web3Auth Dashboard
-          chainConfig: {
-            chainNamespace: CHAIN_NAMESPACES.EIP155,
-            chainId: "0x1", // Ethereum mainnet
-            rpcTarget: "https://rpc.ankr.com/eth",
-          },
+        const adapters = await getDefaultExternalAdapters({ options: web3AuthOptions });
+        adapters.forEach((adapter: IAdapter<unknown>) => {
+          web3auth.configureAdapter(adapter);
         });
-
         await web3auth.initModal();
-        setWeb3auth(web3auth);
+        
+        if (web3auth.connected) {
+          router.push('/');
+        }
       } catch (error) {
         console.error(error);
       }
     };
 
     init();
-  }, []);
+  }, [router]);
 
   const login = async () => {
-    if (!web3auth) {
-      console.log("Web3Auth not initialized");
-      return;
-    }
+    setLoading(true);
     try {
-      const web3authProvider = await web3auth.connect();
-      setProvider(web3authProvider);
-      if (web3authProvider) {
-        const ethersProvider = new ethers.BrowserProvider(web3authProvider);
-        const signer: JsonRpcSigner = await ethersProvider.getSigner();
-        const userAddress = await signer.getAddress();
-        setAddress(userAddress);
+      await web3auth.connect();
+      if (web3auth.connected) {
+        router.push('/');
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const logout = async () => {
-    if (!web3auth) {
-      console.log("Web3Auth not initialized");
-      return;
-    }
-    await web3auth.logout();
-    setProvider(null);
-    setAddress("");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Welcome to Asset Manager
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Please sign in with your Web3 wallet
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 shadow-xl">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+          <p className="text-gray-400">Connect your wallet to continue</p>
         </div>
         
-        <div className="mt-8 space-y-6">
-          {!address ? (
-            <button
-              onClick={login}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Login with Web3Auth
-            </button>
+        <button
+          onClick={login}
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+        >
+          {loading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-center text-sm text-gray-600">
-                Connected Address: {address}
-              </p>
-              <button
-                onClick={logout}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Logout
-              </button>
-            </div>
+            <>
+              <span>Connect Wallet</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </>
           )}
-        </div>
+        </button>
       </div>
     </div>
   );
-};
+}
 
 export default Login;
