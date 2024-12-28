@@ -2,11 +2,9 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation';
+import ConnectButton from './ConnectButton';
 
 const NavbarHome = () => {
-  const router = useRouter();
-
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-6xl mx-auto px-4">
@@ -16,12 +14,7 @@ const NavbarHome = () => {
           </Link>
 
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.push('/login')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
-            >
-              Login
-            </button>
+            <ConnectButton />
           </div>
         </div>
       </div>
